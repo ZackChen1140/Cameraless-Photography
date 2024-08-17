@@ -16,6 +16,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
 
@@ -59,8 +60,7 @@ public class WeatherAPICaller {
         JSONArray JSONarrTime = JSONobData.getJSONArray("time");
         JSONObject lastJSONobTime = JSONarrTime.getJSONObject(JSONarrTime.length()-1);
 
-        String date = lastJSONobTime.getString("dataTime").substring(0,10);
-        String url = lastJSONobTime.getString("url");
+        String url = lastJSONobTime.getString("ProductURL");
         return url;
     }
 
@@ -94,9 +94,24 @@ public class WeatherAPICaller {
                 {
                     return;
                 }
-                Connection conn = Jsoup.connect(url_hour);
+                /*Connection conn = Jsoup.connect(url_hour);
                 conn.header("User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:32.0) Gecko/    20100101 Firefox/32.0");
-                final Document docs = conn.get();
+                final Document docs = conn.get();*/
+
+                URL wurl = new URL(url_hour);
+                HttpURLConnection connection = (HttpURLConnection) wurl.openConnection();
+                connection.setRequestMethod("GET");
+
+                BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                String inputLine;
+                StringBuilder content = new StringBuilder();
+                while ((inputLine = in.readLine()) != null) {
+                    content.append(inputLine);
+                }
+                in.close();
+                connection.disconnect();
+
+                Document docs = Jsoup.parse(content.toString(), "", org.jsoup.parser.Parser.xmlParser());
 
                 int closestIndex = 0;
                 Double minDistance=Double.MAX_VALUE;
