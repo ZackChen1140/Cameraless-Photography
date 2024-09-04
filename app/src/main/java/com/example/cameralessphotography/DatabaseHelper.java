@@ -31,8 +31,8 @@ public class DatabaseHelper {
     private FirebaseStorage storage;
     private FirebaseFirestore db;
     private CollectionReference collectionRef;
-
     private DataTypeConverter dataTypeConverter;
+    private List<List<String>> time_period;
 
     public DatabaseHelper()
     {
@@ -43,7 +43,6 @@ public class DatabaseHelper {
     }
     public void uploadShotResult(Map<String, Object> shotResultMap, final OnUploadCompleteListener onUploadCompleteListener)
     {
-        boolean uploadTaskCompleted = false;
         db.collection("experiments").add(shotResultMap)
         .addOnCompleteListener(new com.google.android.gms.tasks.OnCompleteListener<DocumentReference>() {
             @Override
@@ -56,6 +55,15 @@ public class DatabaseHelper {
     {
         String station_name = (String)photograph_parameters.get("station_name");
         String weather = (String)photograph_parameters.get("weather");
+        String datetime = (String)photograph_parameters.get("datetime");
+
+        int timeSlot = dataTypeConverter.getTimeSlot(datetime);
+        if(timeSlot == -1)
+        {
+            onPhotoInfoListRetrievedListener.onFailure(new Exception());
+            return;
+        }
+
         double latitude = (double)photograph_parameters.get("latitude");
         double longitude = (double)photograph_parameters.get("longitude");
         float roll = (float)photograph_parameters.get("roll");
@@ -65,38 +73,17 @@ public class DatabaseHelper {
         float weigh_yaw = (float)0.90;
         float weigh_pitch = (float)0.05;
 
-        List<String> longiRoundList = new ArrayList<>();
-        BigDecimal scale = new BigDecimal("0.001");
-        for (double longi : Arrays.asList(longitude - 0.001, longitude, longitude + 0.001)) {
-            BigDecimal bdLongi = new BigDecimal(longi);
-            BigDecimal rounded = bdLongi.divide(scale, 0, RoundingMode.HALF_UP).multiply(scale);
-            longiRoundList.add(rounded.toString());
-        }
 
-        List<Integer> orientationArray;
-        if(pitch<-45||pitch>45)
-        {
-            orientationArray = Arrays.asList(5, 6, 7, 8);
-        }
-        else
-        {
-            orientationArray = Arrays.asList(1, 2, 3, 4);
-        }
+        List<String> longiRoundList = dataTypeConverter.getLongiRoundList(longitude);
+
+        List<Integer> orientationArray = dataTypeConverter.getOrientationList(pitch);
 
         Query query = collectionRef.whereEqualTo("station_name", station_name)
                 .whereEqualTo("weather", weather)
                 .whereIn("longitude_round", longiRoundList)
-//                .whereGreaterThanOrEqualTo("roll", roll - 90)
-//                .whereLessThanOrEqualTo("roll", roll + 90)
-//                .whereGreaterThanOrEqualTo("yaw", yaw - 90)
-//                .whereLessThanOrEqualTo("yaw", yaw + 90)
-//                .whereGreaterThanOrEqualTo("pitch", pitch - 90)
-//                .whereLessThanOrEqualTo("pitch", pitch + 90)
                 .whereGreaterThan("latitude", latitude - 0.0009)
                 .whereLessThan("latitude", latitude + 0.0009)
                 .whereIn("orientation", orientationArray)
-//                .whereGreaterThan("longitude", longitude - 0.0009)
-//                .whereLessThan("longitude", longitude + 0.0009)
                 .limit(50);
 
                 query.get()
@@ -107,6 +94,9 @@ public class DatabaseHelper {
                         List<Float> errorList = new ArrayList<>();
                         for(QueryDocumentSnapshot document : queryDocumentSnapshots)
                         {
+                            String tDateTime = (String)document.getData().get("datetime");
+                            if(dataTypeConverter.getTimeSlot(tDateTime) != timeSlot) continue;
+
                             Double tRoll = (Double)document.getData().get("roll");
                             float error_roll = (float)Math.abs(tRoll - roll);
                             if(error_roll > 180) error_roll = 360 - error_roll;
@@ -149,31 +139,6 @@ public class DatabaseHelper {
                         onPhotoInfoListRetrievedListener.onFailure(new Exception());
                     }
                 });
-//                .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-//                    @Override
-//                    public void onComplete(@NonNull Task<QuerySnapshot> task) {
-//                        task.getException();
-//                        if(task.isSuccessful())
-//                        {
-//                            List<String> photoUrlList = new ArrayList<>();
-//                            for (QueryDocumentSnapshot document : task.getResult())
-//                            {
-//                                photoUrlList.add((String)document.getData().get("photo_url"));
-//                            }
-//                            onPhotoUrlListRetrievedListener.onPhotoUrlListRetrieved(photoUrlList);
-//                        }
-//                        else
-//                        {
-//                            Exception exception = task.getException();
-//                            if (exception != null) {
-//                                onPhotoUrlListRetrievedListener.onFailure(exception);
-//                            } else {
-//                                onPhotoUrlListRetrievedListener.onFailure(new Exception("Unknown error occurred."));
-//                            }
-//                            //onPhotoUrlListRetrievedListener.onFailure(task.getException());
-//                        }
-//                    }
-//                });
     }
 
     public interface OnPhotoInfoListRetrievedListener

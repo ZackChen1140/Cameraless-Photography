@@ -79,7 +79,7 @@ public class MainActivity extends Activity {
     private DataTypeConverter dataTypeConverter;
     private Map<String, Object> photograph_parameters;
     private Thread shotThread;
-    private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private SimpleDateFormat sdf;
     private String uploadStr;
 
     @Override
@@ -114,6 +114,8 @@ public class MainActivity extends Activity {
         sensorDataReader = new SensorDataReader(this);
         databaseHelper = new DatabaseHelper();
         dataTypeConverter = new DataTypeConverter();
+
+        sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 

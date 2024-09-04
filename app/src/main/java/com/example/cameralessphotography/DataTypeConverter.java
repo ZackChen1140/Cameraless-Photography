@@ -2,15 +2,17 @@ package com.example.cameralessphotography;
 
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class DataTypeConverter {
     private Map<String, Object> weatherInfoMap;
-    public DataTypeConverter()
-    {
-        weatherInfoMap = new HashMap<>();
-    }
+    public DataTypeConverter() { weatherInfoMap = new HashMap<>(); }
     public Map<String, Object> getWeatherInfoMap4FirebaseQuery(HashMap<String, String> weatherInformation)
     {
         float wind_direction = Float.parseFloat(weatherInformation.get("windDirection"));
@@ -62,5 +64,42 @@ public class DataTypeConverter {
         shotResultMap.put("location_provider", shot_parameters.get("location_provider"));
 
         return shotResultMap;
+    }
+    public List<String> getLongiRoundList(double longitude)
+    {
+        List<String> list = new ArrayList<>();
+        BigDecimal scale = new BigDecimal("0.001");
+        for (double longi : Arrays.asList(longitude - 0.001, longitude, longitude + 0.001)) {
+            BigDecimal bdLongi = new BigDecimal(longi);
+            BigDecimal rounded = bdLongi.divide(scale, 0, RoundingMode.HALF_UP).multiply(scale);
+            list.add(rounded.toString());
+        }
+        return list;
+    }
+    public List<Integer> getOrientationList(float pitch)
+    {
+        List<Integer> list;
+        if(pitch<-45||pitch>45)
+        {
+            list = Arrays.asList(5, 6, 7, 8);
+        }
+        else
+        {
+            list = Arrays.asList(1, 2, 3, 4);
+        }
+        return list;
+    }
+    public int getTimeSlot(String datetime)
+    {
+        String hour = datetime.substring(11, 13);
+        if(hour.equals("23") || hour.equals("00") || hour.equals("01")) return 0;
+        if(hour.equals("02") || hour.equals("03") || hour.equals("04")) return 1;
+        if(hour.equals("05") || hour.equals("06") || hour.equals("07")) return 2;
+        if(hour.equals("08") || hour.equals("09") || hour.equals("10")) return 3;
+        if(hour.equals("11") || hour.equals("12") || hour.equals("13")) return 4;
+        if(hour.equals("14") || hour.equals("15") || hour.equals("16")) return 5;
+        if(hour.equals("17") || hour.equals("18") || hour.equals("19")) return 6;
+        if(hour.equals("20") || hour.equals("21") || hour.equals("22")) return 7;
+        return -1;
     }
 }
