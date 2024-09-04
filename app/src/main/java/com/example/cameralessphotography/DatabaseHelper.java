@@ -49,6 +49,9 @@ public class DatabaseHelper {
         float roll = (float)photograph_parameters.get("roll");
         float yaw = (float)photograph_parameters.get("yaw");
         float pitch = (float)photograph_parameters.get("pitch");
+        float weigh_roll = (float)0.05;
+        float weigh_yaw = (float)0.90;
+        float weigh_pitch = (float)0.05;
 
         List<String> longiRoundList = new ArrayList<>();
         for (double longi : Arrays.asList(longitude-0.001, longitude, longitude+0.001))
@@ -85,42 +88,32 @@ public class DatabaseHelper {
                     @Override
                     public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
                         List<String> photoUrlList = new ArrayList<>();
+                        List<Float> errorList = new ArrayList<>();
                         for(QueryDocumentSnapshot document : queryDocumentSnapshots)
                         {
+                            Double tRoll = (Double)document.getData().get("roll");
+                            float error_roll = (float)Math.abs(tRoll - roll);
+                            if(error_roll > 180) error_roll = 360 - error_roll;
+                            error_roll = error_roll * weigh_roll;
+
                             Double tYaw = (Double)document.getData().get("yaw");
-                            tYaw += 180;
-                            float ceilYaw = (yaw + 225) % 360;
-                            float floorYaw = (yaw + 135) % 360;
+                            float error_yaw = (float)Math.abs(tYaw - yaw);
+                            if(error_yaw > 180) error_yaw = 360 - error_yaw;
+                            error_yaw = error_yaw * weigh_yaw;
 
+                            Double tPitch = (Double)document.getData().get("pitch");
+                            float error_pitch = (float)Math.abs(tPitch - pitch);
+                            error_pitch = error_pitch * weigh_pitch;
 
-                            boolean rule_fit = false;
+                            float error = error_roll + error_yaw + error_pitch;
 
-                            if(ceilYaw<floorYaw)
+                            int idx = 0;
+                            for(;idx < errorList.size(); ++idx)
                             {
-                                if(tYaw <= ceilYaw || tYaw >= floorYaw) rule_fit=true;
+                                if(error < errorList.get(idx)) break;
                             }
-                            else
-                            {
-                                if(tYaw <= ceilYaw && tYaw >= floorYaw) rule_fit=true;
-                            }
-
-                            if(!rule_fit) continue;
-
-                            Double tRoll = (Double)document.getData().get("roll") + 180;
-                            float ceilRoll = (roll + 225) % 360;
-                            float floorRoll = (roll + 135) % 360;
-
-                            if(ceilRoll<floorRoll)
-                            {
-                                if(tRoll > ceilRoll && tRoll < floorRoll) rule_fit=false;
-                            }
-                            else
-                            {
-                                if(tRoll > ceilRoll || tRoll < floorRoll) rule_fit=false;
-                            }
-
-
-                            if(rule_fit) photoUrlList.add((String)document.getData().get("photo_url"));
+                            errorList.add(idx, error);
+                            photoUrlList.add(idx, (String)document.getData().get("photo_url"));
                         }
                         onPhotoUrlListRetrievedListener.onPhotoUrlListRetrieved(photoUrlList);
                     }
