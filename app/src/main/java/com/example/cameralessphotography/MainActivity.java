@@ -39,6 +39,8 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +52,7 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.load.resource.bitmap.CenterCrop;
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import com.bumptech.glide.request.RequestOptions;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 public class MainActivity extends Activity {
     private Button shotBTN;
@@ -57,14 +60,12 @@ public class MainActivity extends Activity {
     private Button weatherBTN;
     private ImageView photoIV;
     private TextView testTV;
-
     private ProgressBar pb;
-
     private WeatherAPICaller weatherAPICaller;
     private HashMap<String, String> weatherInfo;
     private String blob;
     private String photo_base64;
-
+    private String datetime;
     private LocationManager locationManager;
     private LocationListener locationListener;
     private Location lastKnownLocation;
@@ -78,7 +79,7 @@ public class MainActivity extends Activity {
     private DataTypeConverter dataTypeConverter;
     private Map<String, Object> photograph_parameters;
     private Thread shotThread;
-
+    private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private String uploadStr;
 
     @Override
@@ -175,6 +176,8 @@ public class MainActivity extends Activity {
                                 orientationArray[i] = (float)Math.toDegrees(orientationArray[i]);
                             }
 
+                            datetime = sdf.format(new Date());
+
                             weatherInfo = weatherAPICaller.getWeatherInfo(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
 
                             if(!setPhotograph_parameters())
@@ -186,15 +189,23 @@ public class MainActivity extends Activity {
                             //photograph_parameters.put("weather information", weatherInfo);
                             //photograph_parameters.put("orientation array", orientationArray);
 
-                            databaseHelper.getPhotoUrlList(photograph_parameters, new DatabaseHelper.OnPhotoUrlListRetrievedListener() {
+                            databaseHelper.getPhotoInfoList(photograph_parameters, new DatabaseHelper.OnPhotoInfoListRetrievedListener() {
                                 @Override
-                                public void onPhotoUrlListRetrieved(List<String> photoUrlList) {
-                                    if(!photoUrlList.isEmpty())
+                                public void onPhotoInfoListRetrieved(List<Map<String, Object>> photoInfoList) {
+                                    if(!photoInfoList.isEmpty())
                                     {
                                         Glide.with(MainActivity.this)
-                                                .load(photoUrlList.get(0))
+                                                .load(photoInfoList.get(0).get("photo_url"))
                                                 .into(photoIV);
-                                        onUIShotProcess(1);
+                                        databaseHelper.uploadShotResult(
+                                                dataTypeConverter.getShotResultMap4Firebase(photoInfoList.get(0), photograph_parameters),
+                                                new DatabaseHelper.OnUploadCompleteListener() {
+                                                    @Override
+                                                    public void onComplete(boolean success) {
+                                                        if(success) onUIShotProcess(1);
+                                                        else onUIShotProcess(4);
+                                                    }
+                                                });
                                     }
                                     else
                                     {
@@ -278,18 +289,23 @@ public class MainActivity extends Activity {
                 switch (mode)
                 {
                     case 0://開始拍照
-                        Toast.makeText(MainActivity.this, "拍攝中，請稍後...", Toast.LENGTH_SHORT);
+                        Toast.makeText(MainActivity.this, "拍攝中，請稍後...", Toast.LENGTH_SHORT).show();
                         break;
                     case 1://拍攝完成
                         if(pb.getVisibility()==View.VISIBLE) pb.setVisibility(View.INVISIBLE);
+                        Toast.makeText(MainActivity.this, "拍攝完成", Toast.LENGTH_SHORT).show();
                         break;
                     case 2://拍攝失敗
-                        Toast.makeText(MainActivity.this, "拍攝失敗，請稍後再試...", Toast.LENGTH_SHORT);
                         if(pb.getVisibility()==View.VISIBLE) pb.setVisibility(View.INVISIBLE);
+                        Toast.makeText(MainActivity.this, "拍攝失敗，請稍後再試...", Toast.LENGTH_SHORT).show();
                         break;
                     case 3:
-                        Toast.makeText(MainActivity.this, "找不到條件相符的照片!", Toast.LENGTH_SHORT);
                         if(pb.getVisibility()==View.VISIBLE) pb.setVisibility(View.INVISIBLE);
+                        Toast.makeText(MainActivity.this, "找不到條件相符的照片!", Toast.LENGTH_SHORT).show();
+                        break;
+                    case 4:
+                        if(pb.getVisibility()==View.VISIBLE) pb.setVisibility(View.INVISIBLE);
+                        Toast.makeText(MainActivity.this, "拍攝完成，但實驗結果上傳失敗。", Toast.LENGTH_SHORT).show();
                         break;
                 }
             }
@@ -300,6 +316,7 @@ public class MainActivity extends Activity {
     {
         if(weatherInfo.isEmpty()) return false;
         photograph_parameters = dataTypeConverter.getWeatherInfoMap4FirebaseQuery(weatherInfo);
+        photograph_parameters.put("datetime", datetime);
         photograph_parameters.put("latitude", lastKnownLocation.getLatitude());
         photograph_parameters.put("longitude", lastKnownLocation.getLongitude());
         photograph_parameters.put("pitch", orientationArray[1]);
@@ -323,6 +340,7 @@ public class MainActivity extends Activity {
     private JSONObject getUploadObjectForMySQL()
     {
         try {
+
             JSONObject uploadObject = new JSONObject();
 
             uploadObject.put("weather", weatherInfo.get("weather"));

@@ -10,6 +10,7 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.Filter;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
@@ -17,6 +18,8 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.storage.FirebaseStorage;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.security.Key;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,10 +41,19 @@ public class DatabaseHelper {
         collectionRef = db.collection("cameraless_photography_db");
         dataTypeConverter = new DataTypeConverter();
     }
-
-    public void getPhotoUrlList(Map<String, Object> photograph_parameters, final OnPhotoUrlListRetrievedListener onPhotoUrlListRetrievedListener)
+    public void uploadShotResult(Map<String, Object> shotResultMap, final OnUploadCompleteListener onUploadCompleteListener)
     {
-        final List<String> photoUrlList = new ArrayList<>();
+        boolean uploadTaskCompleted = false;
+        db.collection("experiments").add(shotResultMap)
+        .addOnCompleteListener(new com.google.android.gms.tasks.OnCompleteListener<DocumentReference>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentReference> task) {
+                onUploadCompleteListener.onComplete(task.isSuccessful());
+            }
+        });
+    }
+    public void getPhotoInfoList(Map<String, Object> photograph_parameters, final OnPhotoInfoListRetrievedListener onPhotoInfoListRetrievedListener)
+    {
         String station_name = (String)photograph_parameters.get("station_name");
         String weather = (String)photograph_parameters.get("weather");
         double latitude = (double)photograph_parameters.get("latitude");
@@ -54,8 +66,12 @@ public class DatabaseHelper {
         float weigh_pitch = (float)0.05;
 
         List<String> longiRoundList = new ArrayList<>();
-        for (double longi : Arrays.asList(longitude-0.001, longitude, longitude+0.001))
-            longiRoundList.add(String.valueOf(Math.round(longi*1000)*0.001));
+        BigDecimal scale = new BigDecimal("0.001");
+        for (double longi : Arrays.asList(longitude - 0.001, longitude, longitude + 0.001)) {
+            BigDecimal bdLongi = new BigDecimal(longi);
+            BigDecimal rounded = bdLongi.divide(scale, 0, RoundingMode.HALF_UP).multiply(scale);
+            longiRoundList.add(rounded.toString());
+        }
 
         List<Integer> orientationArray;
         if(pitch<-45||pitch>45)
@@ -78,16 +94,16 @@ public class DatabaseHelper {
 //                .whereLessThanOrEqualTo("pitch", pitch + 90)
                 .whereGreaterThan("latitude", latitude - 0.0009)
                 .whereLessThan("latitude", latitude + 0.0009)
-                .whereIn("orientation", orientationArray);
+                .whereIn("orientation", orientationArray)
 //                .whereGreaterThan("longitude", longitude - 0.0009)
 //                .whereLessThan("longitude", longitude + 0.0009)
-//                .limit(10);
+                .limit(50);
 
                 query.get()
                 .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
                     @Override
                     public void onSuccess(QuerySnapshot queryDocumentSnapshots) {
-                        List<String> photoUrlList = new ArrayList<>();
+                        List<Map<String, Object>> photoInfoList = new ArrayList<>();
                         List<Float> errorList = new ArrayList<>();
                         for(QueryDocumentSnapshot document : queryDocumentSnapshots)
                         {
@@ -112,22 +128,25 @@ public class DatabaseHelper {
                             {
                                 if(error < errorList.get(idx)) break;
                             }
+                            if(idx > 10) continue;
                             errorList.add(idx, error);
-                            photoUrlList.add(idx, (String)document.getData().get("photo_url"));
+                            photoInfoList.add(idx, document.getData());
+                            if(errorList.size() > 10) errorList.remove(errorList.get(10));
+                            if(photoInfoList.size() > 10) photoInfoList.remove(photoInfoList.get(10));
                         }
-                        onPhotoUrlListRetrievedListener.onPhotoUrlListRetrieved(photoUrlList);
+                        onPhotoInfoListRetrievedListener.onPhotoInfoListRetrieved(photoInfoList);
                     }
                 })
                 .addOnFailureListener(new OnFailureListener() {
                     @Override
                     public void onFailure(@NonNull Exception e) {
-                        onPhotoUrlListRetrievedListener.onFailure(e);
+                        onPhotoInfoListRetrievedListener.onFailure(e);
                     }
                 })
                 .addOnCanceledListener(new OnCanceledListener() {
                     @Override
                     public void onCanceled() {
-                        onPhotoUrlListRetrievedListener.onFailure(new Exception());
+                        onPhotoInfoListRetrievedListener.onFailure(new Exception());
                     }
                 });
 //                .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
@@ -157,9 +176,13 @@ public class DatabaseHelper {
 //                });
     }
 
-    public interface OnPhotoUrlListRetrievedListener
+    public interface OnPhotoInfoListRetrievedListener
     {
-        void onPhotoUrlListRetrieved(List<String> photoUrlList);
+        void onPhotoInfoListRetrieved(List<Map<String, Object>> photoInfoList);
         void onFailure(Exception e);
+    }
+
+    public interface OnUploadCompleteListener {
+        void onComplete(boolean success);
     }
 }
