@@ -58,7 +58,8 @@ public class DatabaseHelper {
         String datetime = (String)photograph_parameters.get("datetime");
 
         int timeSlot = dataTypeConverter.getTimeSlot(datetime);
-        if(timeSlot == -1)
+        int season = dataTypeConverter.getSeason(datetime);
+        if(timeSlot == -1 || season == -1)
         {
             onPhotoInfoListRetrievedListener.onFailure(new Exception());
             return;
@@ -96,6 +97,8 @@ public class DatabaseHelper {
                         {
                             String tDateTime = (String)document.getData().get("datetime");
                             if(dataTypeConverter.getTimeSlot(tDateTime) != timeSlot) continue;
+                            if(dataTypeConverter.getSeason(tDateTime) != season) continue;
+
 
                             Double tRoll = (Double)document.getData().get("roll");
                             float error_roll = (float)Math.abs(tRoll - roll);

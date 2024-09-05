@@ -102,4 +102,13 @@ public class DataTypeConverter {
         if(hour.equals("20") || hour.equals("21") || hour.equals("22")) return 7;
         return -1;
     }
+    public int getSeason(String datetime)
+    {
+        String month = datetime.substring(5, 7);
+        if(month.equals("03") || month.equals("04") || month.equals("05")) return 0;
+        if(month.equals("06") || month.equals("07") || month.equals("08")) return 1;
+        if(month.equals("09") || month.equals("10") || month.equals("11")) return 2;
+        if(month.equals("12") || month.equals("01") || month.equals("02")) return 3;
+        return -1;
+    }
 }
