@@ -32,7 +32,6 @@ public class DatabaseHelper {
     private FirebaseFirestore db;
     private CollectionReference collectionRef;
     private DataTypeConverter dataTypeConverter;
-    private List<List<String>> time_period;
 
     public DatabaseHelper()
     {
@@ -70,14 +69,22 @@ public class DatabaseHelper {
         float roll = (float)photograph_parameters.get("roll");
         float yaw = (float)photograph_parameters.get("yaw");
         float pitch = (float)photograph_parameters.get("pitch");
-        float weigh_roll = (float)0.05;
-        float weigh_yaw = (float)0.90;
-        float weigh_pitch = (float)0.05;
 
 
         List<String> longiRoundList = dataTypeConverter.getLongiRoundList(longitude);
 
         List<Integer> orientationArray = dataTypeConverter.getOrientationList(pitch);
+
+        float weigh_yaw = (float)0.80;
+        float bweigh_roll = (float)0.15;
+        float bweigh_pitch = (float)0.05;
+        if(orientationArray.get(0).equals(5))
+        {
+            bweigh_roll = (float)0.05;
+            bweigh_pitch = (float)0.15;
+        }
+        float weigh_roll = bweigh_roll;
+        float weigh_pitch = bweigh_pitch;
 
         Query query = collectionRef.whereEqualTo("station_name", station_name)
                 .whereEqualTo("weather", weather)
