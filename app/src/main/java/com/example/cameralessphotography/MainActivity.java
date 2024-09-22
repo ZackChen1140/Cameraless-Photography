@@ -55,32 +55,24 @@ import com.bumptech.glide.request.RequestOptions;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 public class MainActivity extends Activity {
-    private Button shotBTN;
-    private Button menuBTN;
-    private Button weatherBTN;
+    private Button shotBTN, menuBTN, weatherBTN;
     private ImageView photoIV;
     private TextView testTV;
     private ProgressBar pb;
     private WeatherAPICaller weatherAPICaller;
     private HashMap<String, String> weatherInfo;
-    private String blob;
-    private String photo_base64;
-    private String datetime;
+    private String blob, photo_base64, datetime, uploadStr;
     private LocationManager locationManager;
     private LocationListener locationListener;
     private Location lastKnownLocation;
-
-    private float[] accelerometerValue;
-    private float[] gyroscopeValue;
-    private float[] megnetometerValue;
-    private float[] orientationArray;
+    private Bundle bd;
+    private float[] accelerometerValue, gyroscopeValue, megnetometerValue, orientationArray;
     private SensorDataReader sensorDataReader;
     private DatabaseHelper databaseHelper;
     private DataTypeConverter dataTypeConverter;
+    private Map<String, String> camera_settings;
     private Map<String, Object> photograph_parameters;
-    private Thread shotThread;
     private SimpleDateFormat sdf;
-    private String uploadStr;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -116,6 +108,9 @@ public class MainActivity extends Activity {
         dataTypeConverter = new DataTypeConverter();
 
         sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        bd = getIntent().getExtras();
+        if(bd == null) bd = new Bundle();
+        initCameraSettings();
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
@@ -279,7 +274,9 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(MainActivity.this, MenuActivity.class);
+                if(!bd.isEmpty()) intent.putExtras(bd);
                 startActivity(intent);
+                finish();
             }
         });
     }
@@ -361,76 +358,26 @@ public class MainActivity extends Activity {
         }
     }
 
-    private Runnable downloadThread = new Runnable(){
-        public void run()
+    private void initCameraSettings()
+    {
+        camera_settings = new HashMap<>();
+        if(bd.isEmpty())
         {
-            try {
-                lastKnownLocation = getLocation();
-                if(lastKnownLocation==null) return;
-
-                weatherInfo = weatherAPICaller.getWeatherInfo(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
-                uploadStr = getUploadObjectForMySQL().toString();
-
-
-                URL url = new URL("http://192.168.0.49/CameralessPhotography.php");
-                //URL url = new URL("http://192.168.0.100/CameralessPhotography.php");
-                // 開始宣告 HTTP 連線需要的物件，這邊通常都是一綑的
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                // 建立 Google 比較挺的 HttpURLConnection 物件
-                connection.setRequestMethod("POST");
-                // 設定連線方式為 POST
-                connection.setDoOutput(true); // 允許輸出
-                connection.setDoInput(true); // 允許讀入
-
-                OutputStream outputStream = connection.getOutputStream();
-
-                // 使用BufferedWriter寫入資料
-                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(outputStream, "UTF-8"));
-                writer.write(uploadStr);
-
-                // 關閉資料流
-                writer.flush();
-                writer.close();
-                outputStream.close();
-
-                int responseCode = connection.getResponseCode();
-                // 建立取得回應的物件
-                if(responseCode == HttpURLConnection.HTTP_OK){
-                    // 如果 HTTP 回傳狀態是 OK ，而不是 Error
-                    InputStream inputStream = connection.getInputStream();
-                    // 取得輸入串流
-                    BufferedReader bufReader = new BufferedReader(new InputStreamReader(inputStream, "utf-8"), 8);
-                    // 讀取輸入串流的資料
-                    String box = ""; // 宣告存放用字串
-                    String line = null; // 宣告讀取用的字串
-                    while((line = bufReader.readLine()) != null) {
-                        box += line;
-                        // 每當讀取出一列，就加到存放字串後面
-                    }
-                    inputStream.close(); // 關閉輸入串流
-                    blob = box; // 把存放用字串放到全域變數
-                }
-                // 讀取輸入串流並存到字串的部分
-                // 取得資料後想用不同的格式
-                // 例如 Json 等等，都是在這一段做處理
-
-            } catch(Exception e) {
-                blob = e.toString(); // 如果出事，回傳錯誤訊息
-            }
-
-            // 當這個執行緒完全跑完後執行
-            runOnUiThread(new Runnable() {
-                public void run() {
-                    blob = blob.substring(19, blob.length()-5).toString();
-                    photo_base64 = blob.replaceAll("\\\\n", "");
-                    byte[] imageBytes = Base64.decode(photo_base64, Base64.DEFAULT);
-                    Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
-                    photoIV.setImageBitmap(bitmap);
-                    if(pb.getVisibility()==View.VISIBLE) pb.setVisibility(View.INVISIBLE);
-                }
-            });
+            camera_settings.put("orientation", "Auto");
+            camera_settings.put("aspect_ratio", "Auto");
+            camera_settings.put("exposure", "Auto");
+            camera_settings.put("white_balance", "Auto");
+            camera_settings.put("focalLen", "Auto");
         }
-    };
+        else
+        {
+            camera_settings.put("orientation", bd.getString("orientation"));
+            camera_settings.put("aspect_ratio", bd.getString("aspect_ratio"));
+            camera_settings.put("exposure", bd.getString("exposure"));
+            camera_settings.put("white_balance", bd.getString("white_balance"));
+            camera_settings.put("focalLen", bd.getString("focalLen"));
+        }
+    }
 
     private void requestPermission()
     {

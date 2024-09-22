@@ -13,11 +13,6 @@
         <item>4:3</item>
         <item>21:9</item>
     </string-array>
-    <string-array name="flashSpinnerArray">
-        <item>Auto</item>
-        <item>開啟</item>
-        <item>關閉</item>
-    </string-array>
     <string-array name="exposureSpinnerArray">
         <item>Auto</item>
         <item>1/8000</item><item>1/6400</item><item>1/5000</item><item>1/4000</item><item>1/3200</item>
@@ -29,17 +24,6 @@
         <item>1/8</item><item>1/6</item><item>1/5</item><item>1/4</item><item>1/3</item>
         <item>0.4</item><item>0.5</item><item>0.6</item><item>0.8</item><item>1</item>
         <item>2</item><item>4</item><item>8</item><item>15</item><item>30</item>
-    </string-array>
-    <string-array name="apertureArray">
-        <item>Auto</item>
-    </string-array>
-    <string-array name="ISOSpinnerArray">
-        <item>Auto</item>
-        <item>25</item><item>32</item><item>40</item><item>50</item><item>64</item>
-        <item>80</item><item>100</item><item>125</item><item>160</item><item>200</item>
-        <item>250</item><item>320</item><item>400</item><item>500</item><item>640</item>
-        <item>800</item><item>1000</item><item>1250</item><item>1600</item><item>2000</item>
-        <item>2500</item><item>3200</item><item>4000</item><item>5000</item><item>6400</item>
     </string-array>
     <string-array name="white_balanceSpinnerArray">
         <item>Auto</item>

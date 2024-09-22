@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -38,11 +39,13 @@ public class MenuAdapter extends RecyclerView.Adapter<MenuAdapter.ViewHolder>  {
     }
 
     @Override
-    public void onBindViewHolder(ViewHolder holder, int position) {
+    public void onBindViewHolder(ViewHolder holder, int position)
+    {
+        MenuActivity mac = (MenuActivity) context;
         TextView menuItemTV = holder.itemView.findViewById(R.id.menuTextView);
         Spinner menuItemSP = (Spinner)holder.itemView.findViewById(R.id.menuSpinner);
         menuItemTV.setText(menuItemList.get(position));
-
+        int selectedPosition;
         ArrayAdapter<CharSequence> adapter;
         switch (position)
         {
@@ -53,32 +56,28 @@ public class MenuAdapter extends RecyclerView.Adapter<MenuAdapter.ViewHolder>  {
                 adapter = ArrayAdapter.createFromResource(context, R.array.aspect_ratioSpinnerArray, android.R.layout.simple_spinner_dropdown_item);
                 break;
             case 2:
-                adapter = ArrayAdapter.createFromResource(context, R.array.flashSpinnerArray, android.R.layout.simple_spinner_dropdown_item);
-                break;
-            case 3:
                 adapter = ArrayAdapter.createFromResource(context, R.array.exposureSpinnerArray, android.R.layout.simple_spinner_dropdown_item);
                 break;
-            case 4:
-                adapter = ArrayAdapter.createFromResource(context, R.array.apertureArray, android.R.layout.simple_spinner_dropdown_item);
-                break;
-            case 5:
-                adapter = ArrayAdapter.createFromResource(context, R.array.ISOSpinnerArray, android.R.layout.simple_spinner_dropdown_item);
-                break;
-            case 6:
+            case 3:
                 adapter = ArrayAdapter.createFromResource(context, R.array.white_balanceSpinnerArray, android.R.layout.simple_spinner_dropdown_item);
                 break;
-            case 7:
+            case 4:
                 adapter = ArrayAdapter.createFromResource(context, R.array.focalLenSpinnerArray, android.R.layout.simple_spinner_dropdown_item);
                 break;
             default:
                 adapter = ArrayAdapter.createFromResource(context, R.array.defaltSpinnerArray, android.R.layout.simple_spinner_dropdown_item);
         }
-
         menuItemSP.setAdapter(adapter);
-
-        holder.itemView.setOnClickListener(new View.OnClickListener() {
+        menuItemSP.setSelection(mac.getItemPosition(position));
+        int p = position;
+        menuItemSP.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
-            public void onClick(View v) {
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                mac.CameraSetting(p, i);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
 
             }
         });
