@@ -9,6 +9,11 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.Paint;
+import android.graphics.drawable.Drawable;
 import android.hardware.SensorManager;
 import android.location.Location;
 import android.location.LocationListener;
@@ -26,6 +31,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 
 import org.json.JSONException;
@@ -52,6 +58,8 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.load.resource.bitmap.CenterCrop;
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.target.CustomTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 public class MainActivity extends Activity {
@@ -192,8 +200,19 @@ public class MainActivity extends Activity {
                                     if(!photoInfoList.isEmpty())
                                     {
                                         Glide.with(MainActivity.this)
+                                                .asBitmap()
                                                 .load(photoInfoList.get(0).get("photo_url"))
-                                                .into(photoIV);
+                                                .into(new CustomTarget<Bitmap>() {
+                                                    @Override
+                                                    public void onResourceReady(@NonNull Bitmap resource, @Nullable Transition<? super Bitmap> transition)
+                                                    {
+                                                        if(camera_settings.get("white_balance").equals("Auto")) photoIV.setImageBitmap(resource);
+                                                        else photoIV.setImageBitmap(adjustColorTemperature(resource));
+                                                    }
+                                                    @Override
+                                                    public void onLoadCleared(@Nullable Drawable placeholder) {}
+                                                });
+
                                         databaseHelper.uploadShotResult(
                                                 dataTypeConverter.getShotResultMap4Firebase(photoInfoList.get(0), photograph_parameters),
                                                 new DatabaseHelper.OnUploadCompleteListener() {
@@ -208,7 +227,6 @@ public class MainActivity extends Activity {
                                     {
                                         onUIShotProcess(3);
                                     }
-
                                 }
 
                                 @Override
@@ -216,8 +234,6 @@ public class MainActivity extends Activity {
                                     onUIShotProcess(2);
                                 }
                             });
-//                          Thread thread = new Thread(downloadThread);
-//                          thread.start();
                         }
                         catch (JSONException|InterruptedException e)
                         {
@@ -276,6 +292,7 @@ public class MainActivity extends Activity {
                 Intent intent = new Intent(MainActivity.this, MenuActivity.class);
                 if(!bd.isEmpty()) intent.putExtras(bd);
                 startActivity(intent);
+                Glide.get(getApplicationContext()).clearMemory();
                 finish();
             }
         });
@@ -310,6 +327,69 @@ public class MainActivity extends Activity {
             }
         });
 
+    }
+    private Bitmap adjustColorTemperature(Bitmap src) {
+        // 生成輸出 Bitmap
+        Bitmap output = Bitmap.createBitmap(src.getWidth(), src.getHeight(), src.getConfig());
+        Canvas canvas = new Canvas(output);
+        Paint paint = new Paint();
+
+        // 根據色溫計算 ColorMatrix
+        int temperature = -1;
+        switch (camera_settings.get("white_balance"))
+        {
+            case "陰影":
+                temperature = 2500;
+                break;
+            case "多雲":
+                temperature = 4000;
+                break;
+            case "日光":
+                temperature = 5200;
+                break;
+            case "螢光燈":
+                temperature = 6000;
+                break;
+            case "白熾燈":
+                temperature = 7000;
+
+        }
+        ColorMatrix colorMatrix = createColorMatrixForTemperature(temperature);
+        paint.setColorFilter(new ColorMatrixColorFilter(colorMatrix));
+
+        // 將處理後的 Bitmap 畫在 Canvas 上
+        canvas.drawBitmap(src, 0, 0, paint);
+        return output;
+    }
+    private ColorMatrix createColorMatrixForTemperature(float temperature) {
+        // 將色溫從開爾文轉換為簡化的 RGB 調整因子
+        float kelvin = temperature / 100;
+        float r, g, b;
+
+        if (kelvin <= 66)
+        {
+            r = 255;
+            g = (float) (99.4708025861 * Math.log(kelvin) - 161.1195681661);
+            b = kelvin <= 19 ? 0 : (float) (138.5177312231 * Math.log(kelvin - 10) - 305.0447927307);
+        }
+        else
+        {
+            r = (float) (329.698727446 * Math.pow(kelvin - 60, -0.1332047592));
+            g = (float) (288.1221695283 * Math.pow(kelvin - 60, -0.0755148492));
+            b = 255;
+        }
+
+        r = Math.min(Math.max(r / 255, 0), 1);
+        g = Math.min(Math.max(g / 255, 0), 1);
+        b = Math.min(Math.max(b / 255, 0), 1);
+
+        ColorMatrix colorMatrix = new ColorMatrix(new float[]{
+                r, 0, 0, 0, 0,
+                0, g, 0, 0, 0,
+                0, 0, b, 0, 0,
+                0, 0, 0, 1, 0
+        });
+        return colorMatrix;
     }
     private boolean setPhotograph_parameters()
     {
