@@ -66,6 +66,7 @@ public class DatabaseHelper {
 
         double latitude = (double)photograph_parameters.get("latitude");
         double longitude = (double)photograph_parameters.get("longitude");
+        float exposure = (float)photograph_parameters.get("exposure");
         float roll = (float)photograph_parameters.get("roll");
         float yaw = (float)photograph_parameters.get("yaw");
         float pitch = (float)photograph_parameters.get("pitch");
@@ -75,13 +76,14 @@ public class DatabaseHelper {
 
         List<Integer> orientationArray = dataTypeConverter.getOrientationList(pitch);
 
+        float weigh_exposure = (float)0.05;
         float weigh_yaw = (float)0.80;
-        float bweigh_roll = (float)0.15;
+        float bweigh_roll = (float)0.10;
         float bweigh_pitch = (float)0.05;
         if(orientationArray.get(0).equals(5))
         {
             bweigh_roll = (float)0.05;
-            bweigh_pitch = (float)0.15;
+            bweigh_pitch = (float)0.10;
         }
         float weigh_roll = bweigh_roll;
         float weigh_pitch = bweigh_pitch;
@@ -106,6 +108,9 @@ public class DatabaseHelper {
                             if(dataTypeConverter.getTimeSlot(tDateTime) != timeSlot) continue;
                             if(dataTypeConverter.getSeason(tDateTime) != season) continue;
 
+                            Double tExposure = (Double)document.getData().get("exposure_time");
+                            float error_exposure = (float)Math.abs(tExposure - exposure);
+                            error_exposure = error_exposure * weigh_exposure;
 
                             Double tRoll = (Double)document.getData().get("roll");
                             float error_roll = (float)Math.abs(tRoll - roll);
@@ -121,7 +126,7 @@ public class DatabaseHelper {
                             float error_pitch = (float)Math.abs(tPitch - pitch);
                             error_pitch = error_pitch * weigh_pitch;
 
-                            float error = error_roll + error_yaw + error_pitch;
+                            float error = error_exposure + error_roll + error_yaw + error_pitch;
 
                             int idx = 0;
                             for(;idx < errorList.size(); ++idx)

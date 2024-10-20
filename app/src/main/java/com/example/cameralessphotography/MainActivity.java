@@ -81,6 +81,7 @@ public class MainActivity extends Activity {
     private Map<String, String> camera_settings;
     private Map<String, Object> photograph_parameters;
     private SimpleDateFormat sdf;
+    private float exposure;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -401,6 +402,7 @@ public class MainActivity extends Activity {
         photograph_parameters.put("pitch", orientationArray[1]);
         photograph_parameters.put("roll", orientationArray[2]);
         photograph_parameters.put("yaw", orientationArray[0]);
+        photograph_parameters.put("exposure", exposure);
         return true;
     }
     private Location getLocation()
@@ -457,6 +459,13 @@ public class MainActivity extends Activity {
             camera_settings.put("white_balance", bd.getString("white_balance"));
             camera_settings.put("focalLen", bd.getString("focalLen"));
         }
+        if(camera_settings.get("exposure").equals("Auto")) exposure = 0;
+        else if(camera_settings.get("exposure").contains("/"))
+        {
+            String[] expstrs = camera_settings.get("exposure").split("/");
+            exposure = Float.parseFloat(expstrs[0]) / Float.parseFloat(expstrs[1]);
+        }
+        else exposure = Float.parseFloat(camera_settings.get("exposure"));
     }
 
     private void requestPermission()
